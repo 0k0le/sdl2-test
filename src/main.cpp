@@ -418,6 +418,7 @@ RETRY:
 		EPRINT("Failed to create renderer");
 		if(retry == 0) {
 			retry++;
+			SDL_DestroyWindow(window);
 			goto RETRY;
 		}
 		return false;
