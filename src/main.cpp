@@ -385,6 +385,8 @@ void App::PresentScene() {
 
 // PUBLICS
 bool App::OnInit() {
+	int retry = 0;
+
 	// Init SDL
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		EPRINT("Failed to init SDL!");
@@ -399,6 +401,7 @@ bool App::OnInit() {
 	// Create window
 	if((window = SDL_CreateWindow(appName.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
 					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_VULKAN)) == nullptr) {
+RETRY:
 		DPRINT("VULKAN not available, attempting OpenGL");
 		if((window = SDL_CreateWindow(appName.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
 					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL)) == nullptr) {
@@ -412,6 +415,10 @@ bool App::OnInit() {
 	// Create Renderer	
 	if((renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED)) == nullptr) {
 		EPRINT("Failed to create renderer");
+		if(retry == 0) {
+			retry++;
+			goto RETRY;
+		}
 		return false;
 	}
 
