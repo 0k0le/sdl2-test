@@ -13,9 +13,11 @@
 #include <cstring>
 #include <ctime>
 #include <chrono>
+#include <string>
 
 // SDL Includes
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 // X Includes
 #include <X11/Xlib.h>
@@ -55,18 +57,24 @@
 class Clock {
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock> lastRecordedTime;
-	
+		double fps = 0;
+
 	public:
 		Clock();
-		double GetDeltaTime();	
+		double GetDeltaTime();
+		double GetFPS();
 };
+
+double Clock::GetFPS() {
+	return fps;
+}
 
 double Clock::GetDeltaTime() {
 	auto curRecordedTime = std::chrono::high_resolution_clock::now();
 	double duration = std::chrono::duration<double, std::milli>(curRecordedTime - lastRecordedTime).count();
 	lastRecordedTime = curRecordedTime;
 	duration /= 1000;
-	return 1.0/(1.0/duration);
+	return 1.0/(fps = (1.0/duration));
 }
 
 Clock::Clock() {
@@ -255,15 +263,22 @@ SDL_FRect* Character::GetDimensions() {
 }
 
 
-enum Keys {KEY_A = 0, KEY_D, KEY_S, KEY_W, KEY_SPACE, KEY_ESC};
+enum Keys {KEY_A = 0, KEY_D, KEY_S, KEY_W, KEY_SPACE, KEY_ESC, KEYS_TOTAL};
 
 class App {
 	private:
-		bool keys[6] = {0};
+		std::string appName;
+		std::string font;
+		TTF_Font* tFont;
+		bool keys[KEYS_TOTAL] = {0};
 		bool running;
 		double deltaTime;
 		SDL_Renderer* renderer;
 		SDL_Window* window;
+
+		SDL_Surface* surfaceFPSText;
+		SDL_Texture* textureFPSText;
+		SDL_Rect rectFPSText = {0, 0, 300, 100};
 
 		Character *player;
 		Clock *timer;
@@ -277,10 +292,15 @@ class App {
 		void PrepareScene();
 		void PresentScene();
 
+		// In init
+		bool LoadFont();
+
 	public:
-		App();
+		App(std::string name = std::string("SDL2 Application"), std::string sFont = std::string(BASE_DIR FONT_DIR "/Ubuntu-Regular.ttf"));
 
 		int OnExecute();
+		
+	private:
 		bool OnInit();
 		void OnEvent(SDL_Event* event);
 		void OnLoop();
@@ -290,6 +310,13 @@ class App {
 };
 
 // PRIVATES
+
+bool App::LoadFont() {
+	if((tFont = TTF_OpenFont(font.c_str(), FONTSIZE)) == nullptr)
+		return false;
+
+	return true;
+}
 
 void App::HandleKeys() {
 	if(keys[KEY_A]) {
@@ -332,13 +359,28 @@ void App::HandleKeyup(SDL_Keycode keycode) {
 
 void App::PrepareScene() {
 	SDL_RenderClear(renderer);
+	// Draw background
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+	// Draw Rect
 	SDL_RenderDrawRectF(renderer, player->GetDimensions());
 	SDL_SetRenderDrawColor(renderer, player->GetR(), player->GetG(), player->GetB(), 255);
+
+	// Draw FPS
+	std::string FPSTextString = std::string("FPS: ") + std::to_string(timer->GetFPS());
+	surfaceFPSText = TTF_RenderText_Solid(tFont, FPSTextString.c_str(), {255, 255, 255, 255});
+	rectFPSText.w = surfaceFPSText->w;
+	rectFPSText.h = surfaceFPSText->h;
+	textureFPSText = SDL_CreateTextureFromSurface(renderer, surfaceFPSText);	
+	SDL_RenderCopy(renderer, textureFPSText, nullptr, &rectFPSText);
+
 }
 
 void App::PresentScene() {
 	SDL_RenderPresent(renderer);
+
+	SDL_FreeSurface(surfaceFPSText);
+	SDL_DestroyTexture(textureFPSText);
 }
 
 // PUBLICS
@@ -349,11 +391,20 @@ bool App::OnInit() {
 		return false;
 	}
 
-	// Create window
-	if((window = SDL_CreateWindow("SDL Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_VULKAN)) == nullptr) {
-		EPRINT("Failed to create window!");
+	if(TTF_Init() == -1) {
+		EPRINT("Failed to init TTF Library");
 		return false;
+	}
+
+	// Create window
+	if((window = SDL_CreateWindow(appName.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_VULKAN)) == nullptr) {
+		DPRINT("VULKAN not available, attempting OpenGL");
+		if((window = SDL_CreateWindow(appName.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL)) == nullptr) {
+			EPRINT("Failed to create window!");
+			return false;
+		}
 	}
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
@@ -369,6 +420,11 @@ bool App::OnInit() {
 	player->SetXY(static_cast<float>(SCREEN_WIDTH)/2 - playerInfo->w/2, static_cast<float>(SCREEN_HEIGHT)/2 - playerInfo->h/2);
 
 	timer = new Clock;
+
+	if(!LoadFont()) {
+		EPRINT("Failed to load font!");
+		return false;
+	}
 
 	DPRINT("App::OnInit() Completed");
 
@@ -404,11 +460,14 @@ void App::OnRender() {
 void App::OnCleanup() {
 	delete player;
 	delete timer;
+	TTF_CloseFont(tFont);
 	DPRINT("App::OnCleanup() Completed");
 }
 
-App::App() {
+App::App(std::string name, std::string sFont) {
 	running = true;
+	appName = name;
+	font = sFont;
 }
 
 int App::OnExecute() {
@@ -440,8 +499,10 @@ int App::OnExecute() {
 	return 0;
 }
 
-int main() {
-	App *application = new App;
+int main(int argc, char** argv) {
+	UNUSED_PARAMETER(argc);
+
+	App *application = new App(argv[0]);
 
 	if(application->OnExecute() < 0)
 		FATAL("Application FATAL Error!");
