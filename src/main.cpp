@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <cstring>
 #include <ctime>
+#include <chrono>
 
 // SDL Includes
 #include <SDL2/SDL.h>
@@ -53,7 +54,7 @@
 
 class Clock {
 	private:
-		std::clock_t lastRecordedTime;
+		std::chrono::time_point<std::chrono::high_resolution_clock> lastRecordedTime;
 	
 	public:
 		Clock();
@@ -61,14 +62,15 @@ class Clock {
 };
 
 double Clock::GetDeltaTime() {
-	std::clock_t curRecordedTime = std::clock();
-	double duration = static_cast<double>(curRecordedTime - lastRecordedTime) / static_cast<double>(CLOCKS_PER_SEC);
+	auto curRecordedTime = std::chrono::high_resolution_clock::now();
+	double duration = std::chrono::duration<double, std::milli>(curRecordedTime - lastRecordedTime).count();
 	lastRecordedTime = curRecordedTime;
-	return duration;
+	duration /= 1000;
+	return 1.0/(1.0/duration);
 }
 
 Clock::Clock() {
-	lastRecordedTime = std::clock();
+	lastRecordedTime = std::chrono::high_resolution_clock::now();
 }
 
 class Character {
@@ -257,7 +259,7 @@ enum Keys {KEY_A = 0, KEY_D, KEY_S, KEY_W, KEY_SPACE, KEY_ESC};
 
 class App {
 	private:
-		bool keys[6];
+		bool keys[6] = {0};
 		bool running;
 		double deltaTime;
 		SDL_Renderer* renderer;
@@ -418,6 +420,7 @@ int App::OnExecute() {
 
 	while(running) {
 		deltaTime = timer->GetDeltaTime();
+		//std::cout << "Delta Time: " << deltaTime << std::endl;
 
 		// Handle SDL Events
 		while(SDL_PollEvent(&event)) {
