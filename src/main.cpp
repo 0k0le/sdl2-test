@@ -44,6 +44,7 @@
 #define BASE_DIR "./"
 #endif
 
+#define FPS_LIMIT 250
 #define FONT_DIR "fonts"
 #define FONTSIZE 13
 #define CIRCLESIZE 10.0f
@@ -94,7 +95,7 @@ class Character {
 		bool inAir = false;
 		bool isJumping = false;
 
-		double velocity = 600.0;
+		double velocity = 0;
 		double acceleration = 1200.0;
 		double jumpvelocity = 1200.0;
 		double horizontalVelocity = 0;
@@ -177,9 +178,9 @@ void Character::CalculateHorizontal(double &deltaTime) {
 		if(wantsToMoveRight) {
 			// Kick start acceleration
 			if(horizontalVelocity < 3.0 && horizontalVelocity > -3.0) {
-				hozAccelLeft *= 200;
+				hozAccelLeft *= 3;
 			} else if(horizontalVelocity < 5.0 && horizontalVelocity > -5.0) {
-				hozAccelLeft *= 100;
+				hozAccelLeft *= 2;
 			}
 
 			// Boost stopping accel
@@ -193,9 +194,9 @@ void Character::CalculateHorizontal(double &deltaTime) {
 		if(wantsToMoveLeft) {
 			// Kick start acceleration
 			if(horizontalVelocity < 3.0 && horizontalVelocity > -3.0) {
-				hozAccelRight *= 200;
+				hozAccelRight *= 3;
 			} else if(horizontalVelocity < 5.0 && horizontalVelocity > -5.0) {
-				hozAccelRight *= 100;
+				hozAccelRight *= 2;
 			}
 
 			// Boost stopping accel
@@ -412,6 +413,7 @@ RETRY:
 	}
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
 	// Create Renderer	
 	if((renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED)) == nullptr) {
