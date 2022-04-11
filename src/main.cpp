@@ -285,8 +285,8 @@ class App {
 		SDL_Texture* textureFPSText;
 		SDL_Rect rectFPSText = {0, 0, 300, 100};
 
-		Character *player;
-		Clock *timer;
+		Character *player = nullptr;
+		Clock *timer = nullptr;
 
 		// In Loop
 		void HandleKeydown(SDL_Keycode);
@@ -325,14 +325,12 @@ bool App::LoadFont() {
 
 void App::HandleKeys() {
 	if(keys[KEY_A]) {
-		//player->MovX(0.0-(MOVEMENTSPEED*deltaTime)); // Old Movement style
 		player->wantsToMoveLeft = true;
 	} else {
 		player->wantsToMoveLeft = false;
 	}
 
 	if(keys[KEY_D]) {
-		//player->MovX(MOVEMENTSPEED*deltaTime); // Old movement style
 		player->wantsToMoveRight = true;
 	} else {
 		player->wantsToMoveRight = false;
@@ -472,9 +470,18 @@ void App::OnRender() {
 }
 
 void App::OnCleanup() {
-	delete player;
-	delete timer;
-	TTF_CloseFont(tFont);
+	if(player != nullptr)
+		delete player;
+	
+	if(timer != nullptr)
+		delete timer;
+
+	if(TTF_WasInit())
+		TTF_CloseFont(tFont);
+	
+	if(SDL_WasInit(SDL_INIT_EVERYTHING))
+		SDL_Quit();
+	
 	DPRINT("App::OnCleanup() Completed");
 }
 
