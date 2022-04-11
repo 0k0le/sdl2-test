@@ -44,7 +44,7 @@
 #define BASE_DIR "./"
 #endif
 
-#define FPS_LIMIT 250
+#define FPS_LIMIT 250.0
 #define FONT_DIR "fonts"
 #define FONTSIZE 13
 #define CIRCLESIZE 10.0f
@@ -76,7 +76,10 @@ double Clock::GetDeltaTime() {
 	double duration = std::chrono::duration<double, std::milli>(curRecordedTime - lastRecordedTime).count();
 	lastRecordedTime = curRecordedTime;
 	duration /= 1000;
-	return 1.0/(fps = (1.0/duration));
+	fps = (1.0/duration);
+	return duration;
+	
+	//return 1.0/(fps = (1.0/duration));
 }
 
 Clock::Clock() {
@@ -369,7 +372,7 @@ void App::PrepareScene() {
 	SDL_SetRenderDrawColor(renderer, player->GetR(), player->GetG(), player->GetB(), 255);
 
 	// Draw FPS
-	std::string FPSTextString = std::string("FPS: ") + std::to_string(timer->GetFPS());
+	std::string FPSTextString = std::string("FPS: ") + std::to_string(1.0/deltaTime);
 	surfaceFPSText = TTF_RenderText_Solid(tFont, FPSTextString.c_str(), {255, 255, 255, 255});
 	rectFPSText.w = surfaceFPSText->w;
 	rectFPSText.h = surfaceFPSText->h;
@@ -413,7 +416,7 @@ RETRY:
 	}
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+//	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
 	// Create Renderer	
 	if((renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED)) == nullptr) {
@@ -489,19 +492,23 @@ int App::OnExecute() {
 	SDL_Event event;
 
 	while(running) {
-		deltaTime = timer->GetDeltaTime();
-		//std::cout << "Delta Time: " << deltaTime << std::endl;
+		deltaTime += timer->GetDeltaTime();
+		//std::cout << "deltaTime: " << deltaTime << " of " << (1.0/60.0) << std::endl;
 
-		// Handle SDL Events
-		while(SDL_PollEvent(&event)) {
-			OnEvent(&event);
+		if(deltaTime > 1.0/FPS_LIMIT) {
+			// Handle SDL Events
+			while(SDL_PollEvent(&event)) {
+				OnEvent(&event);
+			}
+
+			// Game Logic
+			OnLoop();
+
+			// Render...
+			OnRender();
+
+			deltaTime = 0.0;
 		}
-
-		// Game Logic
-		OnLoop();
-
-		// Render...
-		OnRender();
 	}
 
 	// Cleanup your nasty ass
