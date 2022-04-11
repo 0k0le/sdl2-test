@@ -172,8 +172,8 @@ void Character::CalculateHorizontal(double &deltaTime) {
 	double hozAccelLeft = acceleration;
 
 	if(inAir) {
-		hozAccelLeft /= 1.75;
-		hozAccelRight /= 1.75;
+		hozAccelLeft /= 3;
+		hozAccelRight /= 3;
 	}
 
 	// New horizontal movement includes velocity/acceleration
